@@ -4,9 +4,9 @@
  * ============================================================= */
 #ifndef TIMER_H
 #define TIMER_H
-#include <stdint.h>
+#include "types.h"
 
-volatile uint32_t g_ticks;   /* incremented each IRQ0 */
+extern volatile uint32_t g_ticks;  /* defined in timer.c */
 
 void timer_init(uint32_t hz);
 void timer_sleep(uint32_t ticks);

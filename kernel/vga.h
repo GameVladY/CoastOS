@@ -5,8 +5,8 @@
 #ifndef VGA_H
 #define VGA_H
 
-#include <stdint.h>
-#include <stddef.h>
+#include "types.h"
+
 
 /* VGA text buffer address */
 #define VGA_BUFFER   ((volatile uint16_t*)0xB8000)

@@ -5,7 +5,7 @@
 #ifndef GUI_H
 #define GUI_H
 
-#include <stdint.h>
+#include "types.h"
 #include "vga.h"
 
 /* ── Colour palette for CoastOS GUI ── */

@@ -1,6 +1,8 @@
 /* CoastOS - PIT Timer Implementation */
 #include "timer.h"
 
+volatile uint32_t g_ticks = 0;  /* definition */
+
 #define PIT_CMD   0x43
 #define PIT_CH0   0x40
 #define PIC1_CMD  0x20
@@ -45,7 +47,6 @@ static void __attribute__((naked)) timer_isr(void) {
 }
 
 void timer_init(uint32_t hz) {
-    g_ticks = 0;
 
     /* Remap PIC: IRQ0-7 -> INT 0x20-0x27 */
     outb(0x20, 0x11); outb(0xA0, 0x11);
