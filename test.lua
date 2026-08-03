@@ -1,34 +1,14 @@
---[[
-========================================================================
-WELCOME TO NIGHTMARE OP SCRIPT
-========================================================================
-Features:
-- Animated Intro GUI with sound effects & horror glitch visuals
-- Auto Player Detection (Server Scanner with Headshot Thumbnails)
-- Target Selection System with Live Status Tracking
-- 7 High-Impact Jumpscare Modes:
-1. Classic Screamer (Red Flash, Visual Screamer & Screech Audio)
-2. Orbit Spin Tornado (Teleports & violently spins around target)
-3. Void Abyss Drop (Drops target/attacker from sky with screen blackout)
-4. Strobe Glitch Stalker (Rapidly teleports in 8 cardinal directions)
-5. Shadow Phantom Jumpscare (Cloaked stalk & sudden zoom scare)
-6. Giant Face Possession (Scales massive head scare overlay)
-7. Demonic Teleport Orbit (High-speed multi-axis orbital nightmare)
-- Full Settings Panel (Spin Speed, Shake Intensity, Duration, Auto-Follow)
-- Keybind Toggle (Default: Right Control or 'V')
 ========================================================================
 --]]
 
--- STREAMING_CHUNK: Initializing Roblox services and variables...
+-- STREAMING_CHUNK:Initializing Roblox services and state variables...
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local Lighting = game:GetService("Lighting")
 local SoundService = game:GetService("SoundService")
 
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
 
 -- Script State Variables
 local SelectedPlayer = nil
@@ -36,7 +16,6 @@ local ActiveJumpscare = "Classic Screamer"
 local IsJumpscaring = false
 local SpinSpeed = 50
 local ScareDuration = 3.5
-local AutoTPFollow = false
 local GuiVisible = true
 
 -- Utility function to get safe GUI parent
@@ -48,14 +27,14 @@ end
 return LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- STREAMING_CHUNK: Creating main GUI screen container...
+-- STREAMING_CHUNK:Creating main GUI container and screen hierarchy...
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "NightmareOpScriptGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = GetGuiParent()
 
--- STREAMING_CHUNK: Building intro splash screen animation...
+-- STREAMING_CHUNK:Building intro animated splash screen...
 local IntroFrame = Instance.new("Frame")
 IntroFrame.Name = "IntroFrame"
 IntroFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -80,10 +59,10 @@ IntroTitle.Parent = IntroFrame
 
 local IntroSub = Instance.new("TextLabel")
 IntroSub.Name = "IntroSub"
-IntroSub.Size = UDim2.new(0, 400, 0, 30)
-IntroSub.Position = UDim2.new(0.5, -200, 0.4, 45)
+IntroSub.Size = UDim2.new(0, 500, 0, 30)
+IntroSub.Position = UDim2.new(0.5, -250, 0.4, 45)
 IntroSub.BackgroundTransparency = 1
-IntroSub.Text = "OP Jumpscare & Teleport Matrix Initialized..."
+IntroSub.Text = "OP Jumpscare Matrix & Quantum Teleport Initialized..."
 IntroSub.TextColor3 = Color3.fromRGB(180, 180, 200)
 IntroSub.TextSize = 16
 IntroSub.Font = Enum.Font.SourceSansItalic
@@ -92,10 +71,10 @@ IntroSub.ZIndex = 101
 IntroSub.Parent = IntroFrame
 
 local IntroGlow = Instance.new("ImageLabel")
-IntroGlow.Size = UDim2.new(0, 500, 0, 500)
-IntroGlow.Position = UDim2.new(0.5, -250, 0.5, -250)
+IntroGlow.Size = UDim2.new(0, 550, 0, 550)
+IntroGlow.Position = UDim2.new(0.5, -275, 0.5, -275)
 IntroGlow.BackgroundTransparency = 1
-IntroGlow.Image = "rbxassetid://5028857084" -- Radial Glow
+IntroGlow.Image = "rbxassetid://5028857084" -- Red Radial Glow
 IntroGlow.ImageColor3 = Color3.fromRGB(255, 0, 40)
 IntroGlow.ImageTransparency = 1
 IntroGlow.ZIndex = 100
@@ -103,15 +82,68 @@ IntroGlow.Parent = IntroFrame
 
 -- Intro Sound Effect
 local IntroSound = Instance.new("Sound")
-IntroSound.SoundId = "rbxassetid://9114223171" -- Dark atmosphere sound
+IntroSound.SoundId = "rbxassetid://9114223171" -- Ambient horror riser
 IntroSound.Volume = 1
 IntroSound.Parent = SoundService
 
--- STREAMING_CHUNK: Constructing main window frame and title header...
+-- STREAMING_CHUNK:Constructing toast notification banner for keybind alert...
+local KeyToast = Instance.new("Frame")
+KeyToast.Name = "KeyToast"
+KeyToast.Size = UDim2.new(0, 320, 0, 45)
+KeyToast.Position = UDim2.new(0.5, -160, 1, 20) -- Starts hidden off bottom
+KeyToast.BackgroundColor3 = Color3.fromRGB(18, 18, 25)
+KeyToast.BorderSizePixel = 0
+KeyToast.ZIndex = 90
+KeyToast.Parent = ScreenGui
+
+local ToastCorner = Instance.new("UICorner")
+ToastCorner.CornerRadius = UDim.new(0, 8)
+ToastCorner.Parent = KeyToast
+
+local ToastStroke = Instance.new("UIStroke")
+ToastStroke.Color = Color3.fromRGB(255, 30, 60)
+ToastStroke.Thickness = 1.5
+ToastStroke.Parent = KeyToast
+
+local ToastIcon = Instance.new("TextLabel")
+ToastIcon.Size = UDim2.new(0, 35, 1, 0)
+ToastIcon.Position = UDim2.new(0, 8, 0, 0)
+ToastIcon.BackgroundTransparency = 1
+ToastIcon.Text = "⚠️"
+ToastIcon.TextSize = 20
+ToastIcon.Parent = KeyToast
+
+local ToastText = Instance.new("TextLabel")
+ToastText.Size = UDim2.new(1, -50, 1, 0)
+ToastText.Position = UDim2.new(0, 42, 0, 0)
+ToastText.BackgroundTransparency = 1
+ToastText.Text = "Press [K] or [V] to Open Nightmare GUI"
+ToastText.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToastText.Font = Enum.Font.GothamBold
+ToastText.TextSize = 13
+ToastText.TextXAlignment = Enum.TextXAlignment.Left
+ToastText.Parent = KeyToast
+
+local function ShowToastNotification()
+KeyToast.Position = UDim2.new(0.5, -160, 1, 20)
+TweenService:Create(KeyToast, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+Position = UDim2.new(0.5, -160, 1, -65)
+}):Play()
+
+task.delay(3.5, function()
+    TweenService:Create(KeyToast, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Position = UDim2.new(0.5, -160, 1, 20)
+    }):Play()
+end)
+
+
+end
+
+-- STREAMING_CHUNK:Constructing main script frame and header UI...
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 620, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -310, 0.5, -210)
+MainFrame.Size = UDim2.new(0, 640, 0, 440)
+MainFrame.Position = UDim2.new(0.5, -320, 0.5, -220)
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
@@ -141,15 +173,29 @@ HeaderCorner.CornerRadius = UDim.new(0, 10)
 HeaderCorner.Parent = Header
 
 local HeaderTitle = Instance.new("TextLabel")
-HeaderTitle.Size = UDim2.new(0, 350, 1, 0)
+HeaderTitle.Size = UDim2.new(0, 400, 1, 0)
 HeaderTitle.Position = UDim2.new(0, 15, 0, 0)
 HeaderTitle.BackgroundTransparency = 1
-HeaderTitle.Text = "NIGHTMARE OP SCRIPT v3.0"
+HeaderTitle.Text = "NIGHTMARE OP SCRIPT v4.0 [10 MODES]"
 HeaderTitle.TextColor3 = Color3.fromRGB(255, 50, 75)
-HeaderTitle.TextSize = 20
+HeaderTitle.TextSize = 18
 HeaderTitle.Font = Enum.Font.GothamBold
 HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
 HeaderTitle.Parent = Header
+
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0, 35, 0, 35)
+MinimizeBtn.Position = UDim2.new(1, -80, 0, 5)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.TextSize = 18
+MinimizeBtn.Parent = Header
+
+local MinBtnCorner = Instance.new("UICorner")
+MinBtnCorner.CornerRadius = UDim.new(0, 6)
+MinBtnCorner.Parent = MinimizeBtn
 
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 35, 0, 35)
@@ -200,7 +246,7 @@ UpdateDrag(input)
 end
 end)
 
--- STREAMING_CHUNK: Designing tab navigation interface...
+-- STREAMING_CHUNK:Building tab navigation bar...
 local TabContainer = Instance.new("Frame")
 TabContainer.Size = UDim2.new(1, -20, 0, 35)
 TabContainer.Position = UDim2.new(0, 10, 0, 50)
@@ -214,7 +260,7 @@ TabPlayersBtn.BackgroundColor3 = Color3.fromRGB(255, 30, 60)
 TabPlayersBtn.Text = "👥 Player Scanner"
 TabPlayersBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 TabPlayersBtn.Font = Enum.Font.GothamBold
-TabPlayersBtn.TextSize = 14
+TabPlayersBtn.TextSize = 13
 TabPlayersBtn.Parent = TabContainer
 
 local TabPlayersCorner = Instance.new("UICorner")
@@ -225,10 +271,10 @@ local TabModesBtn = Instance.new("TextButton")
 TabModesBtn.Size = UDim2.new(0.32, 0, 1, 0)
 TabModesBtn.Position = UDim2.new(0.34, 0, 0, 0)
 TabModesBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
-TabModesBtn.Text = "⚡ Jumpscare Modes"
+TabModesBtn.Text = "⚡ Nightmare Modes (10)"
 TabModesBtn.TextColor3 = Color3.fromRGB(200, 200, 220)
 TabModesBtn.Font = Enum.Font.GothamBold
-TabModesBtn.TextSize = 14
+TabModesBtn.TextSize = 13
 TabModesBtn.Parent = TabContainer
 
 local TabModesCorner = Instance.new("UICorner")
@@ -242,7 +288,7 @@ TabSettingsBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
 TabSettingsBtn.Text = "⚙️ Tuning & Settings"
 TabSettingsBtn.TextColor3 = Color3.fromRGB(200, 200, 220)
 TabSettingsBtn.Font = Enum.Font.GothamBold
-TabSettingsBtn.TextSize = 14
+TabSettingsBtn.TextSize = 13
 TabSettingsBtn.Parent = TabContainer
 
 local TabSettingsCorner = Instance.new("UICorner")
@@ -251,12 +297,12 @@ TabSettingsCorner.Parent = TabSettingsBtn
 
 -- Content Body Panels
 local BodyContainer = Instance.new("Frame")
-BodyContainer.Size = UDim2.new(1, -20, 0, 315)
+BodyContainer.Size = UDim2.new(1, -20, 0, 335)
 BodyContainer.Position = UDim2.new(0, 10, 0, 95)
 BodyContainer.BackgroundTransparency = 1
 BodyContainer.Parent = MainFrame
 
--- STREAMING_CHUNK: Building target player list panel...
+-- STREAMING_CHUNK:Building player scanner and target selection list...
 local PlayersPanel = Instance.new("Frame")
 PlayersPanel.Size = UDim2.new(1, 0, 1, 0)
 PlayersPanel.BackgroundTransparency = 1
@@ -267,12 +313,12 @@ local SearchBox = Instance.new("TextBox")
 SearchBox.Size = UDim2.new(0.65, 0, 0, 35)
 SearchBox.Position = UDim2.new(0, 0, 0, 0)
 SearchBox.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-SearchBox.PlaceholderText = "🔍 Search player name..."
+SearchBox.PlaceholderText = "🔍 Search player in server..."
 SearchBox.Text = ""
 SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 SearchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 140)
 SearchBox.Font = Enum.Font.Gotham
-SearchBox.TextSize = 14
+SearchBox.TextSize = 13
 SearchBox.Parent = PlayersPanel
 
 local SearchCorner = Instance.new("UICorner")
@@ -280,10 +326,10 @@ SearchCorner.CornerRadius = UDim.new(0, 6)
 SearchCorner.Parent = SearchBox
 
 local RefreshBtn = Instance.new("TextButton")
-RefreshBtn.Size = UDim2.new(0.32, 0, 0, 35)
-RefreshBtn.Position = UDim2.new(0.68, 0, 0, 0)
+RefreshBtn.Size = UDim2.new(0.33, 0, 0, 35)
+RefreshBtn.Position = UDim2.new(0.67, 0, 0, 0)
 RefreshBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-RefreshBtn.Text = "🔄 Refresh List"
+RefreshBtn.Text = "🔄 Refresh Scanner"
 RefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 RefreshBtn.Font = Enum.Font.GothamBold
 RefreshBtn.TextSize = 13
@@ -294,7 +340,7 @@ RefreshCorner.CornerRadius = UDim.new(0, 6)
 RefreshCorner.Parent = RefreshBtn
 
 local PlayerScroll = Instance.new("ScrollingFrame")
-PlayerScroll.Size = UDim2.new(1, 0, 0, 215)
+PlayerScroll.Size = UDim2.new(1, 0, 0, 235)
 PlayerScroll.Position = UDim2.new(0, 0, 0, 45)
 PlayerScroll.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 PlayerScroll.BorderSizePixel = 0
@@ -315,17 +361,17 @@ local ActionExecuteBtn = Instance.new("TextButton")
 ActionExecuteBtn.Size = UDim2.new(1, 0, 0, 45)
 ActionExecuteBtn.Position = UDim2.new(0, 0, 1, -45)
 ActionExecuteBtn.BackgroundColor3 = Color3.fromRGB(255, 20, 50)
-ActionExecuteBtn.Text = "💀 EXECUTE JUMPSCARE ON SELECTED PLAYER 💀"
+ActionExecuteBtn.Text = "💀 EXECUTE NIGHTMARE JUMPSCARE ON TARGET 💀"
 ActionExecuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ActionExecuteBtn.Font = Enum.Font.GothamBlack
-ActionExecuteBtn.TextSize = 15
+ActionExecuteBtn.TextSize = 14
 ActionExecuteBtn.Parent = PlayersPanel
 
 local ActionCorner = Instance.new("UICorner")
 ActionCorner.CornerRadius = UDim.new(0, 8)
 ActionCorner.Parent = ActionExecuteBtn
 
--- STREAMING_CHUNK: Building jumpscare mode selection grid...
+-- STREAMING_CHUNK:Building jumpscare modes grid view...
 local ModesPanel = Instance.new("Frame")
 ModesPanel.Size = UDim2.new(1, 0, 1, 0)
 ModesPanel.BackgroundTransparency = 1
@@ -346,13 +392,16 @@ ModesGrid.CellPadding = UDim2.new(0.04, 0, 0, 10)
 ModesGrid.Parent = ModesScroll
 
 local ModeList = {
-{Name = "Classic Screamer", Desc = "Full screen scary visual, screech audio & camera shake", Icon = "😱"},
-{Name = "Orbit Spin Tornado", Desc = "Teleports & spins violently around target at high speed", Icon = "🌪️"},
-{Name = "Void Abyss Drop", Desc = "Drops target from sky into darkness with fog FX", Icon = "🌌"},
-{Name = "Strobe Glitch Stalker", Desc = "Rapidly teleports in 8 directions with strobe light", Icon = "⚡"},
-{Name = "Shadow Phantom", Desc = "Invisibility stalker with sudden front jumpscare", Icon = "👻"},
-{Name = "Giant Face Swallow", Desc = "Massive dynamic scare image expanding in camera view", Icon = "👹"},
-{Name = "Demonic Possession", Desc = "T-Pose float towards target with black smoke trail", Icon = "🔥"}
+{Name = "Classic Screamer", Desc = "Scary visual face, red screech & intense camera shake", Icon = "😱"},
+{Name = "Orbit Spin Tornado", Desc = "Teleports & violently spins around target at high speed", Icon = "🌪️"},
+{Name = "Void Abyss Drop", Desc = "Drops target high into darkness with fog plunge FX", Icon = "🌌"},
+{Name = "Strobe Glitch Stalker", Desc = "Rapidly teleports in 8 cardinal points with strobe flash", Icon = "⚡"},
+{Name = "Shadow Phantom", Desc = "Invisibility stalker with sudden jumpscare face zoom", Icon = "👻"},
+{Name = "Giant Face Swallow", Desc = "Massive dynamic monster image expanding in view", Icon = "👹"},
+{Name = "Demonic Possession", Desc = "Float towards target with black smoke trail & spinning", Icon = "🔥"},
+{Name = "Black Hole Singularity", Desc = "[OP] Gravitational spiral vortex locking target in void", Icon = "🕳️"},
+{Name = "Blood Moon Ambush", Desc = "[OP] Quad-cardinal flash teleport with red moon lighting", Icon = "🩸"},
+{Name = "Dimension Glitch Warp", Desc = "[OP] Hyper-velocity 3D matrix warp jumping around target", Icon = "🌀"}
 }
 
 local ModeButtons = {}
@@ -375,23 +424,23 @@ ModeCardStroke.Parent = ModeCard
 
 local ModeTitle = Instance.new("TextLabel")
 ModeTitle.Size = UDim2.new(1, -10, 0, 25)
-ModeTitle.Position = UDim2.new(0, 10, 0, 8)
+ModeTitle.Position = UDim2.new(0, 10, 0, 6)
 ModeTitle.BackgroundTransparency = 1
 ModeTitle.Text = modeData.Icon .. " " .. modeData.Name
 ModeTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 ModeTitle.Font = Enum.Font.GothamBold
-ModeTitle.TextSize = 14
+ModeTitle.TextSize = 13
 ModeTitle.TextXAlignment = Enum.TextXAlignment.Left
 ModeTitle.Parent = ModeCard
 
 local ModeDesc = Instance.new("TextLabel")
-ModeDesc.Size = UDim2.new(1, -20, 0, 40)
-ModeDesc.Position = UDim2.new(0, 10, 0, 32)
+ModeDesc.Size = UDim2.new(1, -15, 0, 40)
+ModeDesc.Position = UDim2.new(0, 10, 0, 30)
 ModeDesc.BackgroundTransparency = 1
 ModeDesc.Text = modeData.Desc
 ModeDesc.TextColor3 = Color3.fromRGB(160, 160, 180)
 ModeDesc.Font = Enum.Font.SourceSans
-ModeDesc.TextSize = 12
+ModeDesc.TextSize = 11
 ModeDesc.TextWrapped = true
 ModeDesc.TextXAlignment = Enum.TextXAlignment.Left
 ModeDesc.Parent = ModeCard
@@ -414,7 +463,7 @@ end)
 
 end
 
--- STREAMING_CHUNK: Building custom settings and tuning sliders...
+-- STREAMING_CHUNK:Building tuning sliders and settings control panel...
 local SettingsPanel = Instance.new("Frame")
 SettingsPanel.Size = UDim2.new(1, 0, 1, 0)
 SettingsPanel.BackgroundTransparency = 1
@@ -482,7 +531,7 @@ local DurationLabel = Instance.new("TextLabel")
 DurationLabel.Size = UDim2.new(1, 0, 0, 25)
 DurationLabel.Position = UDim2.new(0, 0, 0, 75)
 DurationLabel.BackgroundTransparency = 1
-DurationLabel.Text = "⏱️ Scare Duration: " .. string.format("%.1f", ScareDuration) .. " seconds"
+DurationLabel.Text = "⏱️ Jumpscare Duration: " .. string.format("%.1f", ScareDuration) .. " seconds"
 DurationLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 DurationLabel.Font = Enum.Font.GothamBold
 DurationLabel.TextSize = 14
@@ -521,7 +570,7 @@ if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputTyp
 local relX = math.clamp((input.Position.X - DurationSliderBG.AbsolutePosition.X) / DurationSliderBG.AbsoluteSize.X, 0.1, 1)
 ScareDuration = math.floor(relX * 10 * 10) / 10
 DurationFill.Size = UDim2.new(relX, 0, 1, 0)
-DurationLabel.Text = "⏱️ Scare Duration: " .. string.format("%.1f", ScareDuration) .. " seconds"
+DurationLabel.Text = "⏱️ Jumpscare Duration: " .. string.format("%.1f", ScareDuration) .. " seconds"
 end
 end)
 local releaseConn
@@ -533,12 +582,12 @@ end
 end)
 end)
 
--- Keybind Info
+-- Keybind Info Box
 local KeybindInfo = Instance.new("TextLabel")
-KeybindInfo.Size = UDim2.new(1, 0, 0, 60)
+KeybindInfo.Size = UDim2.new(1, 0, 0, 70)
 KeybindInfo.Position = UDim2.new(0, 0, 0, 150)
 KeybindInfo.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
-KeybindInfo.Text = "📌 Keybind: Press 'Right Control' or 'V' on your keyboard to toggle this GUI interface anywhere."
+KeybindInfo.Text = "📌 Keybind Shortcuts:\nPress 'K', 'V', or 'Right Control' on your keyboard at any time to hide/re-open this menu instantly."
 KeybindInfo.TextColor3 = Color3.fromRGB(200, 200, 220)
 KeybindInfo.Font = Enum.Font.Gotham
 KeybindInfo.TextSize = 13
@@ -566,17 +615,13 @@ TabPlayersBtn.MouseButton1Click:Connect(function() SwitchTab(PlayersPanel, TabPl
 TabModesBtn.MouseButton1Click:Connect(function() SwitchTab(ModesPanel, TabModesBtn) end)
 TabSettingsBtn.MouseButton1Click:Connect(function() SwitchTab(SettingsPanel, TabSettingsBtn) end)
 
--- STREAMING_CHUNK: Implementing dynamic player scanner and list updater...
-local PlayerCards = {}
-
+-- STREAMING_CHUNK:Implementing player scanner engine and thumbnail loader...
 local function RefreshPlayerList()
--- Clear current list items
 for _, child in ipairs(PlayerScroll:GetChildren()) do
 if child:IsA("Frame") then
 child:Destroy()
 end
 end
-PlayerCards = {}
 
 local filterText = string.lower(SearchBox.Text)
 
@@ -606,7 +651,7 @@ for _, targetPlayer in ipairs(Players:GetPlayers()) do
             AvatarCorner.CornerRadius = UDim.new(1, 0)
             AvatarCorner.Parent = AvatarImage
 
-            -- Fetch user thumbnail safely
+            -- Fetch Roblox User Thumbnail
             task.spawn(function()
                 local content, isLoaded = Players:GetUserThumbnailAsync(
                     targetPlayer.UserId,
@@ -641,7 +686,7 @@ for _, targetPlayer in ipairs(Players:GetPlayers()) do
             UserLabel.TextXAlignment = Enum.TextXAlignment.Left
             UserLabel.Parent = Card
 
-            -- Selection Button Overlay
+            -- Selection Overlay Button
             local SelectBtn = Instance.new("TextButton")
             SelectBtn.Size = UDim2.new(1, 0, 1, 0)
             SelectBtn.BackgroundTransparency = 1
@@ -652,8 +697,6 @@ for _, targetPlayer in ipairs(Players:GetPlayers()) do
                 SelectedPlayer = targetPlayer
                 RefreshPlayerList()
             end)
-
-            PlayerCards[targetPlayer.UserId] = Card
         end
     end
 end
@@ -674,12 +717,12 @@ end
 RefreshPlayerList()
 end)
 
--- STREAMING_CHUNK: Implementing camera shake and visual FX generators...
-local function TriggerScreenScare(duration, imageId, soundId)
+-- STREAMING_CHUNK:Implementing screen jumpscare effects and visual triggers...
+local function TriggerScreenScare(duration, imageId, soundId, customColor)
 task.spawn(function()
 local ScareFrame = Instance.new("Frame")
 ScareFrame.Size = UDim2.new(1, 0, 1, 0)
-ScareFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+ScareFrame.BackgroundColor3 = customColor or Color3.fromRGB(255, 0, 0)
 ScareFrame.BackgroundTransparency = 0.2
 ScareFrame.ZIndex = 200
 ScareFrame.Parent = ScreenGui
@@ -687,26 +730,23 @@ ScareFrame.Parent = ScreenGui
     local ImageOverlay = Instance.new("ImageLabel")
     ImageOverlay.Size = UDim2.new(1, 0, 1, 0)
     ImageOverlay.BackgroundTransparency = 1
-    ImageOverlay.Image = imageId or "rbxassetid://6322923052" -- Horror Face
+    ImageOverlay.Image = imageId or "rbxassetid://6322923052"
     ImageOverlay.ZIndex = 201
     ImageOverlay.Parent = ScareFrame
 
     local Audio = Instance.new("Sound")
-    Audio.SoundId = soundId or "rbxassetid://9069609268" -- High pitch screech
+    Audio.SoundId = soundId or "rbxassetid://9069609268"
     Audio.Volume = 3
     Audio.Parent = SoundService
     Audio:Play()
 
-    -- Screen Shake Animation Loop
     local startTime = tick()
-    local cam = workspace.CurrentCamera
-    local origCFrame = cam.CFrame
 
     while tick() - startTime < duration do
-        local shakeX = math.random(-8, 8) / 10
-        local shakeY = math.random(-8, 8) / 10
-        ScareFrame.Position = UDim2.new(0, shakeX * 10, 0, shakeY * 10)
-        ImageOverlay.ImageColor3 = (math.random(1, 2) == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 0, 0)
+        local shakeX = math.random(-10, 10) / 10
+        local shakeY = math.random(-10, 10) / 10
+        ScareFrame.Position = UDim2.new(0, shakeX * 12, 0, shakeY * 12)
+        ImageOverlay.ImageColor3 = (math.random(1, 2) == 1) and Color3.fromRGB(255, 255, 255) or (customColor or Color3.fromRGB(255, 0, 0))
         RunService.RenderStepped:Wait()
     end
 
@@ -717,13 +757,13 @@ end)
 
 end
 
--- STREAMING_CHUNK: Creating jumpscare execution engine...
+-- STREAMING_CHUNK:Implementing 10 OP jumpscare and teleportation algorithms...
 local function PerformJumpscare()
 if IsJumpscaring then return end
 if not SelectedPlayer or not SelectedPlayer.Character or not SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
 ActionExecuteBtn.Text = "⚠️ SELECT A VALID PLAYER FIRST!"
 task.wait(1.5)
-ActionExecuteBtn.Text = "💀 EXECUTE JUMPSCARE ON SELECTED PLAYER 💀"
+ActionExecuteBtn.Text = "💀 EXECUTE NIGHTMARE JUMPSCARE ON TARGET 💀"
 return
 end
 
@@ -734,7 +774,7 @@ local MyHRP = LocalChar.HumanoidRootPart
 local TargetHRP = SelectedPlayer.Character.HumanoidRootPart
 
 IsJumpscaring = true
-ActionExecuteBtn.Text = "⚡ JUMPSCARE IN PROGRESS..."
+ActionExecuteBtn.Text = "⚡ NIGHTMARE JUMPSCARE IN PROGRESS..."
 ActionExecuteBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 
 local originalPosition = MyHRP.CFrame
@@ -759,7 +799,6 @@ elseif ActiveJumpscare == "Orbit Spin Tornado" then
 elseif ActiveJumpscare == "Void Abyss Drop" then
     MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, 80, 0)
     TriggerScreenScare(ScareDuration, "rbxassetid://6322923052", "rbxassetid://9069609268")
-    
     local elapsed = 0
     while elapsed < ScareDuration and TargetHRP and TargetHRP.Parent do
         local dt = RunService.RenderStepped:Wait()
@@ -780,10 +819,8 @@ elseif ActiveJumpscare == "Strobe Glitch Stalker" then
     end
 
 elseif ActiveJumpscare == "Shadow Phantom" then
-    -- Teleport slightly behind target silently
     MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, 0, 6)
     task.wait(0.8)
-    -- Sudden dash front jumpscare
     MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, 0, -2.5) * CFrame.Angles(0, math.rad(180), 0)
     TriggerScreenScare(ScareDuration - 0.8, "rbxassetid://6322923052", "rbxassetid://9069609268")
     task.wait(ScareDuration - 0.8)
@@ -802,12 +839,50 @@ elseif ActiveJumpscare == "Demonic Possession" then
         local rot = elapsed * (SpinSpeed / 2)
         MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, 3, -3) * CFrame.Angles(0, math.rad(rot), 0)
     end
+
+elseif ActiveJumpscare == "Black Hole Singularity" then
+    -- OP Nightmare Mode 1: Spiral Gravitational Vortex Pull
+    TriggerScreenScare(ScareDuration, "rbxassetid://7186088210", "rbxassetid://9114223171", Color3.fromRGB(80, 0, 120))
+    local elapsed = 0
+    while elapsed < ScareDuration and TargetHRP and TargetHRP.Parent do
+        local dt = RunService.RenderStepped:Wait()
+        elapsed = elapsed + dt
+        local radius = math.max(1, 10 - (elapsed * 2))
+        local angle = elapsed * (SpinSpeed / 3)
+        local offset = Vector3.new(math.cos(angle) * radius, math.sin(angle) * 3, math.sin(angle) * radius)
+        MyHRP.CFrame = CFrame.new(TargetHRP.Position + offset, TargetHRP.Position)
+    end
+
+elseif ActiveJumpscare == "Blood Moon Ambush" then
+    -- OP Nightmare Mode 2: Quad-Cardinal Lightning Flash Ambush
+    TriggerScreenScare(ScareDuration, "rbxassetid://6322923052", "rbxassetid://9069609268", Color3.fromRGB(200, 0, 0))
+    local dists = {Vector3.new(0, 0, -3), Vector3.new(3, 0, 0), Vector3.new(0, 0, 3), Vector3.new(-3, 0, 0)}
+    local elapsed = 0
+    while elapsed < ScareDuration and TargetHRP and TargetHRP.Parent do
+        local posOffset = dists[math.random(1, #dists)]
+        MyHRP.CFrame = CFrame.new(TargetHRP.Position + posOffset, TargetHRP.Position)
+        task.wait(0.12)
+        elapsed = elapsed + 0.12
+    end
+
+elseif ActiveJumpscare == "Dimension Glitch Warp" then
+    -- OP Nightmare Mode 3: Matrix 3D Multi-Axis Quantum Glitch Teleport
+    TriggerScreenScare(ScareDuration, "rbxassetid://7186088210", "rbxassetid://9069609268", Color3.fromRGB(0, 255, 200))
+    local elapsed = 0
+    while elapsed < ScareDuration and TargetHRP and TargetHRP.Parent do
+        local rx = math.random(-6, 6)
+        local ry = math.random(-3, 6)
+        local rz = math.random(-6, 6)
+        MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(rx, ry, rz) * CFrame.Angles(math.rad(math.random(0, 360)), math.rad(math.random(0, 360)), 0)
+        task.wait(0.06)
+        elapsed = elapsed + 0.06
+    end
 end
 
 -- Return to original position
 MyHRP.CFrame = originalPosition
 IsJumpscaring = false
-ActionExecuteBtn.Text = "💀 EXECUTE JUMPSCARE ON SELECTED PLAYER 💀"
+ActionExecuteBtn.Text = "💀 EXECUTE NIGHTMARE JUMPSCARE ON TARGET 💀"
 ActionExecuteBtn.BackgroundColor3 = Color3.fromRGB(255, 20, 50)
 
 
@@ -815,21 +890,38 @@ end
 
 ActionExecuteBtn.MouseButton1Click:Connect(PerformJumpscare)
 
--- STREAMING_CHUNK: Setting up event listeners and keybinds...
+-- STREAMING_CHUNK:Configuring keybind listeners and toast notification logic...
+local function ToggleGui(state)
+if state ~= nil then
+GuiVisible = state
+else
+GuiVisible = not GuiVisible
+end
+
+MainFrame.Visible = GuiVisible
+if not GuiVisible then
+    ShowToastNotification()
+end
+
+
+end
+
 CloseBtn.MouseButton1Click:Connect(function()
-MainFrame.Visible = false
-GuiVisible = false
+ToggleGui(false)
+end)
+
+MinimizeBtn.MouseButton1Click:Connect(function()
+ToggleGui(false)
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 if gameProcessed then return end
-if input.KeyCode == Enum.KeyCode.RightControl or input.KeyCode == Enum.KeyCode.V then
-GuiVisible = not GuiVisible
-MainFrame.Visible = GuiVisible
+if input.KeyCode == Enum.KeyCode.K or input.KeyCode == Enum.KeyCode.V or input.KeyCode == Enum.KeyCode.RightControl then
+ToggleGui()
 end
 end)
 
--- STREAMING_CHUNK: Triggering initial welcome intro sequences...
+-- STREAMING_CHUNK:Executing cinematic intro transition and sequence startup...
 local function RunIntroAnimation()
 IntroSound:Play()
 
@@ -841,7 +933,7 @@ TweenService:Create(IntroTitle, TweenInfo.new(1.2, Enum.EasingStyle.Cubic, Enum.
 
 TweenService:Create(IntroSub, TweenInfo.new(1.4, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
     TextTransparency = 0,
-    Position = UDim2.new(0.5, -200, 0.35, 45)
+    Position = UDim2.new(0.5, -250, 0.35, 45)
 }):Play()
 
 TweenService:Create(IntroGlow, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
@@ -850,7 +942,7 @@ TweenService:Create(IntroGlow, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.Ea
 
 task.wait(2.2)
 
--- Collapse Intro and open Main UI
+-- Collapse Intro Frame
 TweenService:Create(IntroTitle, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
     TextTransparency = 1,
     Size = UDim2.new(0, 0, 0, 0)
@@ -867,13 +959,14 @@ TweenService:Create(IntroFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.
 task.wait(0.6)
 IntroFrame:Destroy()
 
+-- Display Main GUI with Scale Pop Animation
 MainFrame.Visible = true
 MainFrame.Size = UDim2.new(0, 0, 0, 0)
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 
 TweenService:Create(MainFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = UDim2.new(0, 620, 0, 420),
-    Position = UDim2.new(0.5, -310, 0.5, -210)
+    Size = UDim2.new(0, 640, 0, 440),
+    Position = UDim2.new(0.5, -320, 0.5, -220)
 }):Play()
 
 RefreshPlayerList()
