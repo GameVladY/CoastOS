@@ -1,150 +1,186 @@
--- STREAMING_CHUNK:Initializing services and dynamic GUI parent detection...
+--[[
+========================================================================
+WELCOME TO NIGHTMARE OP SCRIPT
+========================================================================
+Features:
+- Animated Intro GUI with sound effects & horror glitch visuals
+- Auto Player Detection (Server Scanner with Headshot Thumbnails)
+- Target Selection System with Live Status Tracking
+- 7 High-Impact Jumpscare Modes:
+1. Classic Screamer (Red Flash, Visual Screamer & Screech Audio)
+2. Orbit Spin Tornado (Teleports & violently spins around target)
+3. Void Abyss Drop (Drops target/attacker from sky with screen blackout)
+4. Strobe Glitch Stalker (Rapidly teleports in 8 cardinal directions)
+5. Shadow Phantom Jumpscare (Cloaked stalk & sudden zoom scare)
+6. Giant Face Possession (Scales massive head scare overlay)
+7. Demonic Teleport Orbit (High-speed multi-axis orbital nightmare)
+- Full Settings Panel (Spin Speed, Shake Intensity, Duration, Auto-Follow)
+- Keybind Toggle (Default: Right Control or 'V')
+========================================================================
+--]]
+
+-- STREAMING_CHUNK: Initializing Roblox services and variables...
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
 local SoundService = game:GetService("SoundService")
-local CoreGui = game:GetService("CoreGui")
 
-local localPlayer = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
--- Safe GUI container resolution (Works in Roblox Studio & Executors)
-local function getGuiParent()
-local success, result = pcall(function()
-if gethui then
-return gethui()
-elseif CoreGui then
-return CoreGui
+-- Script State Variables
+local SelectedPlayer = nil
+local ActiveJumpscare = "Classic Screamer"
+local IsJumpscaring = false
+local SpinSpeed = 50
+local ScareDuration = 3.5
+local AutoTPFollow = false
+local GuiVisible = true
+
+-- Utility function to get safe GUI parent
+local function GetGuiParent()
+local success, coreGui = pcall(function() return game:GetService("CoreGui") end)
+if success and coreGui then
+return coreGui
 end
-end)
-if success and result then
-return result
-end
-return localPlayer:WaitForChild("PlayerGui")
-end
-
-local targetParent = getGuiParent()
-
--- Destroy existing GUI instance if script is re-executed
-if targetParent:FindFirstChild("NightmareOpGui") then
-targetParent:FindFirstChild("NightmareOpGui"):Destroy()
+return LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- State variables
-local selectedTargetPlayer = nil
-local activeJumpscareType = "Classic Screamer"
-local isSpinning = false
-local spinConnection = nil
-local dragging = false
-local dragInput, dragStart, startPos
+-- STREAMING_CHUNK: Creating main GUI screen container...
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NightmareOpScriptGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = GetGuiParent()
 
-print("--------------------------------------------------")
-print("🔥 WELCOME TO NIGHTMARE OP SCRIPT LOADED SUCCESSFULLY 🔥")
-print("--------------------------------------------------")
+-- STREAMING_CHUNK: Building intro splash screen animation...
+local IntroFrame = Instance.new("Frame")
+IntroFrame.Name = "IntroFrame"
+IntroFrame.Size = UDim2.new(1, 0, 1, 0)
+IntroFrame.Position = UDim2.new(0, 0, 0, 0)
+IntroFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 8)
+IntroFrame.BackgroundTransparency = 0
+IntroFrame.ZIndex = 100
+IntroFrame.Parent = ScreenGui
 
--- STREAMING_CHUNK:Creating main ScreenGui and visual overlay elements...
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "NightmareOpGui"
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.DisplayOrder = 99999
-screenGui.Parent = targetParent
+local IntroTitle = Instance.new("TextLabel")
+IntroTitle.Name = "IntroTitle"
+IntroTitle.Size = UDim2.new(0, 600, 0, 80)
+IntroTitle.Position = UDim2.new(0.5, -300, 0.4, -40)
+IntroTitle.BackgroundTransparency = 1
+IntroTitle.Text = "WELCOME TO NIGHTMARE"
+IntroTitle.TextColor3 = Color3.fromRGB(255, 20, 50)
+IntroTitle.TextSize = 42
+IntroTitle.Font = Enum.Font.FredokaOne
+IntroTitle.TextTransparency = 1
+IntroTitle.ZIndex = 101
+IntroTitle.Parent = IntroFrame
 
--- Fullscreen Jumpscare Overlay
-local jumpscareOverlay = Instance.new("Frame")
-jumpscareOverlay.Name = "JumpscareOverlay"
-jumpscareOverlay.Size = UDim2.new(1, 0, 1, 0)
-jumpscareOverlay.Position = UDim2.new(0, 0, 0, 0)
-jumpscareOverlay.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-jumpscareOverlay.BackgroundTransparency = 1
-jumpscareOverlay.ZIndex = 1000
-jumpscareOverlay.Parent = screenGui
+local IntroSub = Instance.new("TextLabel")
+IntroSub.Name = "IntroSub"
+IntroSub.Size = UDim2.new(0, 400, 0, 30)
+IntroSub.Position = UDim2.new(0.5, -200, 0.4, 45)
+IntroSub.BackgroundTransparency = 1
+IntroSub.Text = "OP Jumpscare & Teleport Matrix Initialized..."
+IntroSub.TextColor3 = Color3.fromRGB(180, 180, 200)
+IntroSub.TextSize = 16
+IntroSub.Font = Enum.Font.SourceSansItalic
+IntroSub.TextTransparency = 1
+IntroSub.ZIndex = 101
+IntroSub.Parent = IntroFrame
 
-local jumpscareImage = Instance.new("ImageLabel")
-jumpscareImage.Name = "JumpscareImage"
-jumpscareImage.Size = UDim2.new(0.7, 0, 0.7, 0)
-jumpscareImage.AnchorPoint = Vector2.new(0.5, 0.5)
-jumpscareImage.Position = UDim2.new(0.5, 0, 0.5, 0)
-jumpscareImage.BackgroundTransparency = 1
-jumpscareImage.Image = "rbxassetid://6894541539" -- Dark entity horror asset
-jumpscareImage.ImageTransparency = 1
-jumpscareImage.ZIndex = 1001
-jumpscareImage.Parent = jumpscareOverlay
+local IntroGlow = Instance.new("ImageLabel")
+IntroGlow.Size = UDim2.new(0, 500, 0, 500)
+IntroGlow.Position = UDim2.new(0.5, -250, 0.5, -250)
+IntroGlow.BackgroundTransparency = 1
+IntroGlow.Image = "rbxassetid://5028857084" -- Radial Glow
+IntroGlow.ImageColor3 = Color3.fromRGB(255, 0, 40)
+IntroGlow.ImageTransparency = 1
+IntroGlow.ZIndex = 100
+IntroGlow.Parent = IntroFrame
 
--- STREAMING_CHUNK:Constructing window frame and layout structure...
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 620, 0, 420)
-mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
-mainFrame.BorderSizePixel = 0
-mainFrame.ClipsDescendants = true
-mainFrame.ZIndex = 10
-mainFrame.Parent = screenGui
+-- Intro Sound Effect
+local IntroSound = Instance.new("Sound")
+IntroSound.SoundId = "rbxassetid://9114223171" -- Dark atmosphere sound
+IntroSound.Volume = 1
+IntroSound.Parent = SoundService
 
-local mainCorner = Instance.new("UICorner")
-mainCorner.CornerRadius = UDim.new(0, 14)
-mainCorner.Parent = mainFrame
+-- STREAMING_CHUNK: Constructing main window frame and title header...
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 620, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -310, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
 
-local mainStroke = Instance.new("UIStroke")
-mainStroke.Thickness = 2
-mainStroke.Color = Color3.fromRGB(230, 35, 35)
-mainStroke.Parent = mainFrame
+local MainUICorner = Instance.new("UICorner")
+MainUICorner.CornerRadius = UDim.new(0, 10)
+MainUICorner.Parent = MainFrame
 
--- STREAMING_CHUNK:Building header bar with dragging capabilities...
-local header = Instance.new("Frame")
-header.Name = "Header"
-header.Size = UDim2.new(1, 0, 0, 50)
-header.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
-header.BorderSizePixel = 0
-header.ZIndex = 11
-header.Parent = mainFrame
+local MainUIStroke = Instance.new("UIStroke")
+MainUIStroke.Color = Color3.fromRGB(255, 30, 60)
+MainUIStroke.Thickness = 2
+MainUIStroke.Transparency = 0.2
+MainUIStroke.Parent = MainFrame
 
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 14)
-headerCorner.Parent = header
+-- Top Header
+local Header = Instance.new("Frame")
+Header.Name = "Header"
+Header.Size = UDim2.new(1, 0, 0, 45)
+Header.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+Header.BorderSizePixel = 0
+Header.Parent = MainFrame
 
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Name = "TitleLabel"
-titleLabel.Size = UDim2.new(1, -60, 1, 0)
-titleLabel.Position = UDim2.new(0, 16, 0, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Font = Enum.Font.FredokaOne
-titleLabel.Text = "☠️ WELCOME TO NIGHTMARE OP SCRIPT"
-titleLabel.TextColor3 = Color3.fromRGB(255, 65, 65)
-titleLabel.TextSize = 19
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-titleLabel.ZIndex = 12
-titleLabel.Parent = header
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0, 10)
+HeaderCorner.Parent = Header
 
-local closeButton = Instance.new("TextButton")
-closeButton.Name = "CloseButton"
-closeButton.Size = UDim2.new(0, 32, 0, 32)
-closeButton.AnchorPoint = Vector2.new(1, 0.5)
-closeButton.Position = UDim2.new(1, -12, 0.5, 0)
-closeButton.BackgroundColor3 = Color3.fromRGB(220, 38, 38)
-closeButton.Font = Enum.Font.SourceSansBold
-closeButton.Text = "✕"
-closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeButton.TextSize = 16
-closeButton.ZIndex = 12
-closeButton.Parent = header
+local HeaderTitle = Instance.new("TextLabel")
+HeaderTitle.Size = UDim2.new(0, 350, 1, 0)
+HeaderTitle.Position = UDim2.new(0, 15, 0, 0)
+HeaderTitle.BackgroundTransparency = 1
+HeaderTitle.Text = "NIGHTMARE OP SCRIPT v3.0"
+HeaderTitle.TextColor3 = Color3.fromRGB(255, 50, 75)
+HeaderTitle.TextSize = 20
+HeaderTitle.Font = Enum.Font.GothamBold
+HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
+HeaderTitle.Parent = Header
 
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 8)
-closeCorner.Parent = closeButton
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 35, 0, 35)
+CloseBtn.Position = UDim2.new(1, -40, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 16
+CloseBtn.Parent = Header
 
--- Window Drag Logic
-header.InputBegan:Connect(function(input)
+local CloseBtnCorner = Instance.new("UICorner")
+CloseBtnCorner.CornerRadius = UDim.new(0, 6)
+CloseBtnCorner.Parent = CloseBtn
+
+-- Dragging Mechanics
+local Dragging, DragInput, DragStart, StartPos
+local function UpdateDrag(input)
+local delta = input.Position - DragStart
+MainFrame.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + delta.X, StartPos.Y.Scale, StartPos.Y.Offset + delta.Y)
+end
+
+Header.InputBegan:Connect(function(input)
 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-dragging = true
-dragStart = input.Position
-startPos = mainFrame.Position
+Dragging = true
+DragStart = input.Position
+StartPos = MainFrame.Position
 
     input.Changed:Connect(function()
         if input.UserInputState == Enum.UserInputState.End then
-            dragging = false
+            Dragging = false
         end
     end)
 end
@@ -152,149 +188,225 @@ end
 
 end)
 
-header.InputChanged:Connect(function(input)
+Header.InputChanged:Connect(function(input)
 if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-dragInput = input
+DragInput = input
 end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-if input == dragInput and dragging then
-local delta = input.Position - dragStart
-mainFrame.Position = UDim2.new(
-startPos.Scale.X, startPos.Offset.X + delta.X,
-startPos.Scale.Y, startPos.Offset.Y + delta.Y
-)
+if input == DragInput and Dragging then
+UpdateDrag(input)
 end
 end)
 
--- STREAMING_CHUNK:Creating left panel for dynamic player selection...
-local leftPanel = Instance.new("Frame")
-leftPanel.Name = "LeftPanel"
-leftPanel.Size = UDim2.new(0, 220, 1, -65)
-leftPanel.Position = UDim2.new(0, 12, 0, 58)
-leftPanel.BackgroundColor3 = Color3.fromRGB(20, 21, 30)
-leftPanel.BorderSizePixel = 0
-leftPanel.ZIndex = 11
-leftPanel.Parent = mainFrame
+-- STREAMING_CHUNK: Designing tab navigation interface...
+local TabContainer = Instance.new("Frame")
+TabContainer.Size = UDim2.new(1, -20, 0, 35)
+TabContainer.Position = UDim2.new(0, 10, 0, 50)
+TabContainer.BackgroundTransparency = 1
+TabContainer.Parent = MainFrame
 
-local leftCorner = Instance.new("UICorner")
-leftCorner.CornerRadius = UDim.new(0, 10)
-leftCorner.Parent = leftPanel
+local TabPlayersBtn = Instance.new("TextButton")
+TabPlayersBtn.Size = UDim2.new(0.32, 0, 1, 0)
+TabPlayersBtn.Position = UDim2.new(0, 0, 0, 0)
+TabPlayersBtn.BackgroundColor3 = Color3.fromRGB(255, 30, 60)
+TabPlayersBtn.Text = "👥 Player Scanner"
+TabPlayersBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TabPlayersBtn.Font = Enum.Font.GothamBold
+TabPlayersBtn.TextSize = 14
+TabPlayersBtn.Parent = TabContainer
 
-local playerListHeader = Instance.new("TextLabel")
-playerListHeader.Size = UDim2.new(1, 0, 0, 30)
-playerListHeader.BackgroundTransparency = 1
-playerListHeader.Font = Enum.Font.SourceSansBold
-playerListHeader.Text = "SERVER PLAYERS"
-playerListHeader.TextColor3 = Color3.fromRGB(150, 155, 175)
-playerListHeader.TextSize = 13
-playerListHeader.ZIndex = 12
-playerListHeader.Parent = leftPanel
+local TabPlayersCorner = Instance.new("UICorner")
+TabPlayersCorner.CornerRadius = UDim.new(0, 6)
+TabPlayersCorner.Parent = TabPlayersBtn
 
-local playerScroll = Instance.new("ScrollingFrame")
-playerScroll.Name = "PlayerScroll"
-playerScroll.Size = UDim2.new(1, -10, 1, -35)
-playerScroll.Position = UDim2.new(0, 5, 0, 30)
-playerScroll.BackgroundTransparency = 1
-playerScroll.BorderSizePixel = 0
-playerScroll.ScrollBarThickness = 4
-playerScroll.ScrollBarImageColor3 = Color3.fromRGB(220, 38, 38)
-playerScroll.ZIndex = 12
-playerScroll.Parent = leftPanel
+local TabModesBtn = Instance.new("TextButton")
+TabModesBtn.Size = UDim2.new(0.32, 0, 1, 0)
+TabModesBtn.Position = UDim2.new(0.34, 0, 0, 0)
+TabModesBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+TabModesBtn.Text = "⚡ Jumpscare Modes"
+TabModesBtn.TextColor3 = Color3.fromRGB(200, 200, 220)
+TabModesBtn.Font = Enum.Font.GothamBold
+TabModesBtn.TextSize = 14
+TabModesBtn.Parent = TabContainer
 
-local playerListLayout = Instance.new("UIListLayout")
-playerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-playerListLayout.Padding = UDim.new(0, 5)
-playerListLayout.Parent = playerScroll
+local TabModesCorner = Instance.new("UICorner")
+TabModesCorner.CornerRadius = UDim.new(0, 6)
+TabModesCorner.Parent = TabModesBtn
 
--- STREAMING_CHUNK:Creating right panel for jumpscare settings and controls...
-local rightPanel = Instance.new("Frame")
-rightPanel.Name = "RightPanel"
-rightPanel.Size = UDim2.new(1, -256, 1, -65)
-rightPanel.Position = UDim2.new(0, 244, 0, 58)
-rightPanel.BackgroundColor3 = Color3.fromRGB(20, 21, 30)
-rightPanel.BorderSizePixel = 0
-rightPanel.ZIndex = 11
-rightPanel.Parent = mainFrame
+local TabSettingsBtn = Instance.new("TextButton")
+TabSettingsBtn.Size = UDim2.new(0.32, 0, 1, 0)
+TabSettingsBtn.Position = UDim2.new(0.68, 0, 0, 0)
+TabSettingsBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+TabSettingsBtn.Text = "⚙️ Tuning & Settings"
+TabSettingsBtn.TextColor3 = Color3.fromRGB(200, 200, 220)
+TabSettingsBtn.Font = Enum.Font.GothamBold
+TabSettingsBtn.TextSize = 14
+TabSettingsBtn.Parent = TabContainer
 
-local rightCorner = Instance.new("UICorner")
-rightCorner.CornerRadius = UDim.new(0, 10)
-rightCorner.Parent = rightPanel
+local TabSettingsCorner = Instance.new("UICorner")
+TabSettingsCorner.CornerRadius = UDim.new(0, 6)
+TabSettingsCorner.Parent = TabSettingsBtn
 
-local targetStatusLabel = Instance.new("TextLabel")
-targetStatusLabel.Name = "TargetStatusLabel"
-targetStatusLabel.Size = UDim2.new(1, -20, 0, 30)
-targetStatusLabel.Position = UDim2.new(0, 10, 0, 8)
-targetStatusLabel.BackgroundTransparency = 1
-targetStatusLabel.Font = Enum.Font.SourceSansBold
-targetStatusLabel.Text = "Target: None Selected"
-targetStatusLabel.TextColor3 = Color3.fromRGB(255, 190, 70)
-targetStatusLabel.TextSize = 15
-targetStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-targetStatusLabel.ZIndex = 12
-targetStatusLabel.Parent = rightPanel
+-- Content Body Panels
+local BodyContainer = Instance.new("Frame")
+BodyContainer.Size = UDim2.new(1, -20, 0, 315)
+BodyContainer.Position = UDim2.new(0, 10, 0, 95)
+BodyContainer.BackgroundTransparency = 1
+BodyContainer.Parent = MainFrame
 
-local typeHeader = Instance.new("TextLabel")
-typeHeader.Size = UDim2.new(1, -20, 0, 22)
-typeHeader.Position = UDim2.new(0, 10, 0, 38)
-typeHeader.BackgroundTransparency = 1
-typeHeader.Font = Enum.Font.SourceSansBold
-typeHeader.Text = "SELECT JUMPSCARE MODE:"
-typeHeader.TextColor3 = Color3.fromRGB(150, 155, 175)
-typeHeader.TextSize = 13
-typeHeader.TextXAlignment = Enum.TextXAlignment.Left
-typeHeader.ZIndex = 12
-typeHeader.Parent = rightPanel
+-- STREAMING_CHUNK: Building target player list panel...
+local PlayersPanel = Instance.new("Frame")
+PlayersPanel.Size = UDim2.new(1, 0, 1, 0)
+PlayersPanel.BackgroundTransparency = 1
+PlayersPanel.Visible = true
+PlayersPanel.Parent = BodyContainer
 
--- Jumpscare Type Buttons Grid
-local modesFrame = Instance.new("Frame")
-modesFrame.Name = "ModesFrame"
-modesFrame.Size = UDim2.new(1, -20, 0, 120)
-modesFrame.Position = UDim2.new(0, 10, 0, 64)
-modesFrame.BackgroundTransparency = 1
-modesFrame.ZIndex = 12
-modesFrame.Parent = rightPanel
+local SearchBox = Instance.new("TextBox")
+SearchBox.Size = UDim2.new(0.65, 0, 0, 35)
+SearchBox.Position = UDim2.new(0, 0, 0, 0)
+SearchBox.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+SearchBox.PlaceholderText = "🔍 Search player name..."
+SearchBox.Text = ""
+SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SearchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 140)
+SearchBox.Font = Enum.Font.Gotham
+SearchBox.TextSize = 14
+SearchBox.Parent = PlayersPanel
 
-local modesGrid = Instance.new("UIGridLayout")
-modesGrid.CellSize = UDim2.new(0.48, 0, 0, 52)
-modesGrid.CellPadding = UDim2.new(0.04, 0, 0.08, 0)
-modesGrid.Parent = modesFrame
+local SearchCorner = Instance.new("UICorner")
+SearchCorner.CornerRadius = UDim.new(0, 6)
+SearchCorner.Parent = SearchBox
 
-local jumpscareTypes = {
-{ Name = "Classic Screamer", Icon = "😱" },
-{ Name = "Spinning TP Ambush", Icon = "🌀" },
-{ Name = "Void Screamer", Icon = "👁️" },
-{ Name = "Dimension Strobe", Icon = "⚡" }
+local RefreshBtn = Instance.new("TextButton")
+RefreshBtn.Size = UDim2.new(0.32, 0, 0, 35)
+RefreshBtn.Position = UDim2.new(0.68, 0, 0, 0)
+RefreshBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+RefreshBtn.Text = "🔄 Refresh List"
+RefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RefreshBtn.Font = Enum.Font.GothamBold
+RefreshBtn.TextSize = 13
+RefreshBtn.Parent = PlayersPanel
+
+local RefreshCorner = Instance.new("UICorner")
+RefreshCorner.CornerRadius = UDim.new(0, 6)
+RefreshCorner.Parent = RefreshBtn
+
+local PlayerScroll = Instance.new("ScrollingFrame")
+PlayerScroll.Size = UDim2.new(1, 0, 0, 215)
+PlayerScroll.Position = UDim2.new(0, 0, 0, 45)
+PlayerScroll.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+PlayerScroll.BorderSizePixel = 0
+PlayerScroll.ScrollBarThickness = 6
+PlayerScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 30, 60)
+PlayerScroll.Parent = PlayersPanel
+
+local PlayerScrollCorner = Instance.new("UICorner")
+PlayerScrollCorner.CornerRadius = UDim.new(0, 6)
+PlayerScrollCorner.Parent = PlayerScroll
+
+local PlayerListLayout = Instance.new("UIListLayout")
+PlayerListLayout.Padding = UDim.new(0, 6)
+PlayerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+PlayerListLayout.Parent = PlayerScroll
+
+local ActionExecuteBtn = Instance.new("TextButton")
+ActionExecuteBtn.Size = UDim2.new(1, 0, 0, 45)
+ActionExecuteBtn.Position = UDim2.new(0, 0, 1, -45)
+ActionExecuteBtn.BackgroundColor3 = Color3.fromRGB(255, 20, 50)
+ActionExecuteBtn.Text = "💀 EXECUTE JUMPSCARE ON SELECTED PLAYER 💀"
+ActionExecuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActionExecuteBtn.Font = Enum.Font.GothamBlack
+ActionExecuteBtn.TextSize = 15
+ActionExecuteBtn.Parent = PlayersPanel
+
+local ActionCorner = Instance.new("UICorner")
+ActionCorner.CornerRadius = UDim.new(0, 8)
+ActionCorner.Parent = ActionExecuteBtn
+
+-- STREAMING_CHUNK: Building jumpscare mode selection grid...
+local ModesPanel = Instance.new("Frame")
+ModesPanel.Size = UDim2.new(1, 0, 1, 0)
+ModesPanel.BackgroundTransparency = 1
+ModesPanel.Visible = false
+ModesPanel.Parent = BodyContainer
+
+local ModesScroll = Instance.new("ScrollingFrame")
+ModesScroll.Size = UDim2.new(1, 0, 1, 0)
+ModesScroll.BackgroundTransparency = 1
+ModesScroll.BorderSizePixel = 0
+ModesScroll.ScrollBarThickness = 6
+ModesScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 30, 60)
+ModesScroll.Parent = ModesPanel
+
+local ModesGrid = Instance.new("UIGridLayout")
+ModesGrid.CellSize = UDim2.new(0.48, 0, 0, 80)
+ModesGrid.CellPadding = UDim2.new(0.04, 0, 0, 10)
+ModesGrid.Parent = ModesScroll
+
+local ModeList = {
+{Name = "Classic Screamer", Desc = "Full screen scary visual, screech audio & camera shake", Icon = "😱"},
+{Name = "Orbit Spin Tornado", Desc = "Teleports & spins violently around target at high speed", Icon = "🌪️"},
+{Name = "Void Abyss Drop", Desc = "Drops target from sky into darkness with fog FX", Icon = "🌌"},
+{Name = "Strobe Glitch Stalker", Desc = "Rapidly teleports in 8 directions with strobe light", Icon = "⚡"},
+{Name = "Shadow Phantom", Desc = "Invisibility stalker with sudden front jumpscare", Icon = "👻"},
+{Name = "Giant Face Swallow", Desc = "Massive dynamic scare image expanding in camera view", Icon = "👹"},
+{Name = "Demonic Possession", Desc = "T-Pose float towards target with black smoke trail", Icon = "🔥"}
 }
 
-local typeButtons = {}
+local ModeButtons = {}
 
-for _, jType in ipairs(jumpscareTypes) do
-local btn = Instance.new("TextButton")
-btn.Name = jType.Name
-btn.BackgroundColor3 = (jType.Name == activeJumpscareType) and Color3.fromRGB(220, 38, 38) or Color3.fromRGB(32, 34, 48)
-btn.Font = Enum.Font.SourceSansBold
-btn.Text = jType.Icon .. " " .. jType.Name
-btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-btn.TextSize = 13
-btn.TextWrapped = true
-btn.ZIndex = 13
-btn.Parent = modesFrame
+for idx, modeData in ipairs(ModeList) do
+local ModeCard = Instance.new("TextButton")
+ModeCard.Name = modeData.Name
+ModeCard.BackgroundColor3 = (modeData.Name == ActiveJumpscare) and Color3.fromRGB(150, 20, 40) or Color3.fromRGB(25, 25, 35)
+ModeCard.Text = ""
+ModeCard.Parent = ModesScroll
 
-local btnCorner = Instance.new("UICorner")
-btnCorner.CornerRadius = UDim.new(0, 8)
-btnCorner.Parent = btn
+local ModeCardCorner = Instance.new("UICorner")
+ModeCardCorner.CornerRadius = UDim.new(0, 8)
+ModeCardCorner.Parent = ModeCard
 
-typeButtons[jType.Name] = btn
+local ModeCardStroke = Instance.new("UIStroke")
+ModeCardStroke.Color = (modeData.Name == ActiveJumpscare) and Color3.fromRGB(255, 50, 80) or Color3.fromRGB(50, 50, 65)
+ModeCardStroke.Thickness = 1.5
+ModeCardStroke.Parent = ModeCard
 
-btn.MouseButton1Click:Connect(function()
-    activeJumpscareType = jType.Name
-    for name, button in pairs(typeButtons) do
-        if name == activeJumpscareType then
-            TweenService:Create(button, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(220, 38, 38) }):Play()
+local ModeTitle = Instance.new("TextLabel")
+ModeTitle.Size = UDim2.new(1, -10, 0, 25)
+ModeTitle.Position = UDim2.new(0, 10, 0, 8)
+ModeTitle.BackgroundTransparency = 1
+ModeTitle.Text = modeData.Icon .. " " .. modeData.Name
+ModeTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ModeTitle.Font = Enum.Font.GothamBold
+ModeTitle.TextSize = 14
+ModeTitle.TextXAlignment = Enum.TextXAlignment.Left
+ModeTitle.Parent = ModeCard
+
+local ModeDesc = Instance.new("TextLabel")
+ModeDesc.Size = UDim2.new(1, -20, 0, 40)
+ModeDesc.Position = UDim2.new(0, 10, 0, 32)
+ModeDesc.BackgroundTransparency = 1
+ModeDesc.Text = modeData.Desc
+ModeDesc.TextColor3 = Color3.fromRGB(160, 160, 180)
+ModeDesc.Font = Enum.Font.SourceSans
+ModeDesc.TextSize = 12
+ModeDesc.TextWrapped = true
+ModeDesc.TextXAlignment = Enum.TextXAlignment.Left
+ModeDesc.Parent = ModeCard
+
+ModeButtons[modeData.Name] = {Card = ModeCard, Stroke = ModeCardStroke}
+
+ModeCard.MouseButton1Click:Connect(function()
+    ActiveJumpscare = modeData.Name
+    for name, btns in pairs(ModeButtons) do
+        if name == ActiveJumpscare then
+            btns.Card.BackgroundColor3 = Color3.fromRGB(150, 20, 40)
+            btns.Stroke.Color = Color3.fromRGB(255, 50, 80)
         else
-            TweenService:Create(button, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(32, 34, 48) }):Play()
+            btns.Card.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+            btns.Stroke.Color = Color3.fromRGB(50, 50, 65)
         end
     end
 end)
@@ -302,273 +414,471 @@ end)
 
 end
 
--- STREAMING_CHUNK:Creating primary action buttons...
-local executeButton = Instance.new("TextButton")
-executeButton.Name = "ExecuteButton"
-executeButton.Size = UDim2.new(1, -20, 0, 48)
-executeButton.Position = UDim2.new(0, 10, 0, 196)
-executeButton.BackgroundColor3 = Color3.fromRGB(220, 38, 38)
-executeButton.Font = Enum.Font.FredokaOne
-executeButton.Text = "☠️ EXECUTE JUMPSCARE"
-executeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-executeButton.TextSize = 17
-executeButton.ZIndex = 12
-executeButton.Parent = rightPanel
+-- STREAMING_CHUNK: Building custom settings and tuning sliders...
+local SettingsPanel = Instance.new("Frame")
+SettingsPanel.Size = UDim2.new(1, 0, 1, 0)
+SettingsPanel.BackgroundTransparency = 1
+SettingsPanel.Visible = false
+SettingsPanel.Parent = BodyContainer
 
-local execCorner = Instance.new("UICorner")
-execCorner.CornerRadius = UDim.new(0, 8)
-execCorner.Parent = executeButton
+-- Spin Speed Option
+local SpinLabel = Instance.new("TextLabel")
+SpinLabel.Size = UDim2.new(1, 0, 0, 25)
+SpinLabel.Position = UDim2.new(0, 0, 0, 10)
+SpinLabel.BackgroundTransparency = 1
+SpinLabel.Text = "🌀 Spin Velocity: " .. tostring(SpinSpeed) .. " RPM"
+SpinLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpinLabel.Font = Enum.Font.GothamBold
+SpinLabel.TextSize = 14
+SpinLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpinLabel.Parent = SettingsPanel
 
-local tpButton = Instance.new("TextButton")
-tpButton.Name = "TpButton"
-tpButton.Size = UDim2.new(0.48, 0, 0, 42)
-tpButton.Position = UDim2.new(0, 10, 0, 252)
-tpButton.BackgroundColor3 = Color3.fromRGB(35, 40, 58)
-tpButton.Font = Enum.Font.SourceSansBold
-tpButton.Text = "🌀 Teleport to Target"
-tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-tpButton.TextSize = 14
-tpButton.ZIndex = 12
-tpButton.Parent = rightPanel
+local SpinSliderBG = Instance.new("Frame")
+SpinSliderBG.Size = UDim2.new(1, 0, 0, 15)
+SpinSliderBG.Position = UDim2.new(0, 0, 0, 40)
+SpinSliderBG.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+SpinSliderBG.Parent = SettingsPanel
 
-local tpCorner = Instance.new("UICorner")
-tpCorner.CornerRadius = UDim.new(0, 8)
-tpCorner.Parent = tpButton
+local SpinSliderBGCorner = Instance.new("UICorner")
+SpinSliderBGCorner.CornerRadius = UDim.new(0, 6)
+SpinSliderBGCorner.Parent = SpinSliderBG
 
-local spinButton = Instance.new("TextButton")
-spinButton.Name = "SpinButton"
-spinButton.Size = UDim2.new(0.48, 0, 0, 42)
-spinButton.Position = UDim2.new(0.52, 0, 0, 252)
-spinButton.BackgroundColor3 = Color3.fromRGB(35, 40, 58)
-spinButton.Font = Enum.Font.SourceSansBold
-spinButton.Text = "🔄 Spin Character"
-spinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-spinButton.TextSize = 14
-spinButton.ZIndex = 12
-spinButton.Parent = rightPanel
+local SpinFill = Instance.new("Frame")
+SpinFill.Size = UDim2.new(SpinSpeed / 150, 0, 1, 0)
+SpinFill.BackgroundColor3 = Color3.fromRGB(255, 30, 60)
+SpinFill.Parent = SpinSliderBG
 
-local spinCorner = Instance.new("UICorner")
-spinCorner.CornerRadius = UDim.new(0, 8)
-spinCorner.Parent = spinButton
+local SpinFillCorner = Instance.new("UICorner")
+SpinFillCorner.CornerRadius = UDim.new(0, 6)
+SpinFillCorner.Parent = SpinFill
 
--- STREAMING_CHUNK:Defining player list builder function...
-local function updatePlayerList()
-for _, child in ipairs(playerScroll:GetChildren()) do
-if child:IsA("TextButton") then
+local SpinBtn = Instance.new("TextButton")
+SpinBtn.Size = UDim2.new(1, 0, 1, 0)
+SpinBtn.BackgroundTransparency = 1
+SpinBtn.Text = ""
+SpinBtn.Parent = SpinSliderBG
+
+SpinBtn.MouseButton1Down:Connect(function()
+local moveConn
+moveConn = UserInputService.InputChanged:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+local relX = math.clamp((input.Position.X - SpinSliderBG.AbsolutePosition.X) / SpinSliderBG.AbsoluteSize.X, 0.05, 1)
+SpinSpeed = math.floor(relX * 150)
+SpinFill.Size = UDim2.new(relX, 0, 1, 0)
+SpinLabel.Text = "🌀 Spin Velocity: " .. tostring(SpinSpeed) .. " RPM"
+end
+end)
+local releaseConn
+releaseConn = UserInputService.InputEnded:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+moveConn:Disconnect()
+releaseConn:Disconnect()
+end
+end)
+end)
+
+-- Duration Option
+local DurationLabel = Instance.new("TextLabel")
+DurationLabel.Size = UDim2.new(1, 0, 0, 25)
+DurationLabel.Position = UDim2.new(0, 0, 0, 75)
+DurationLabel.BackgroundTransparency = 1
+DurationLabel.Text = "⏱️ Scare Duration: " .. string.format("%.1f", ScareDuration) .. " seconds"
+DurationLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+DurationLabel.Font = Enum.Font.GothamBold
+DurationLabel.TextSize = 14
+DurationLabel.TextXAlignment = Enum.TextXAlignment.Left
+DurationLabel.Parent = SettingsPanel
+
+local DurationSliderBG = Instance.new("Frame")
+DurationSliderBG.Size = UDim2.new(1, 0, 0, 15)
+DurationSliderBG.Position = UDim2.new(0, 0, 0, 105)
+DurationSliderBG.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+DurationSliderBG.Parent = SettingsPanel
+
+local DurationSliderBGCorner = Instance.new("UICorner")
+DurationSliderBGCorner.CornerRadius = UDim.new(0, 6)
+DurationSliderBGCorner.Parent = DurationSliderBG
+
+local DurationFill = Instance.new("Frame")
+DurationFill.Size = UDim2.new(ScareDuration / 10, 0, 1, 0)
+DurationFill.BackgroundColor3 = Color3.fromRGB(255, 30, 60)
+DurationFill.Parent = DurationSliderBG
+
+local DurationFillCorner = Instance.new("UICorner")
+DurationFillCorner.CornerRadius = UDim.new(0, 6)
+DurationFillCorner.Parent = DurationFill
+
+local DurationBtn = Instance.new("TextButton")
+DurationBtn.Size = UDim2.new(1, 0, 1, 0)
+DurationBtn.BackgroundTransparency = 1
+DurationBtn.Text = ""
+DurationBtn.Parent = DurationSliderBG
+
+DurationBtn.MouseButton1Down:Connect(function()
+local moveConn
+moveConn = UserInputService.InputChanged:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+local relX = math.clamp((input.Position.X - DurationSliderBG.AbsolutePosition.X) / DurationSliderBG.AbsoluteSize.X, 0.1, 1)
+ScareDuration = math.floor(relX * 10 * 10) / 10
+DurationFill.Size = UDim2.new(relX, 0, 1, 0)
+DurationLabel.Text = "⏱️ Scare Duration: " .. string.format("%.1f", ScareDuration) .. " seconds"
+end
+end)
+local releaseConn
+releaseConn = UserInputService.InputEnded:Connect(function(input)
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+moveConn:Disconnect()
+releaseConn:Disconnect()
+end
+end)
+end)
+
+-- Keybind Info
+local KeybindInfo = Instance.new("TextLabel")
+KeybindInfo.Size = UDim2.new(1, 0, 0, 60)
+KeybindInfo.Position = UDim2.new(0, 0, 0, 150)
+KeybindInfo.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+KeybindInfo.Text = "📌 Keybind: Press 'Right Control' or 'V' on your keyboard to toggle this GUI interface anywhere."
+KeybindInfo.TextColor3 = Color3.fromRGB(200, 200, 220)
+KeybindInfo.Font = Enum.Font.Gotham
+KeybindInfo.TextSize = 13
+KeybindInfo.TextWrapped = true
+KeybindInfo.Parent = SettingsPanel
+
+local KeybindInfoCorner = Instance.new("UICorner")
+KeybindInfoCorner.CornerRadius = UDim.new(0, 8)
+KeybindInfoCorner.Parent = KeybindInfo
+
+-- Tab Switching Logic
+local function SwitchTab(activePanel, activeBtn)
+PlayersPanel.Visible = (activePanel == PlayersPanel)
+ModesPanel.Visible = (activePanel == ModesPanel)
+SettingsPanel.Visible = (activePanel == SettingsPanel)
+
+TabPlayersBtn.BackgroundColor3 = (activeBtn == TabPlayersBtn) and Color3.fromRGB(255, 30, 60) or Color3.fromRGB(30, 30, 42)
+TabModesBtn.BackgroundColor3 = (activeBtn == TabModesBtn) and Color3.fromRGB(255, 30, 60) or Color3.fromRGB(30, 30, 42)
+TabSettingsBtn.BackgroundColor3 = (activeBtn == TabSettingsBtn) and Color3.fromRGB(255, 30, 60) or Color3.fromRGB(30, 30, 42)
+
+
+end
+
+TabPlayersBtn.MouseButton1Click:Connect(function() SwitchTab(PlayersPanel, TabPlayersBtn) end)
+TabModesBtn.MouseButton1Click:Connect(function() SwitchTab(ModesPanel, TabModesBtn) end)
+TabSettingsBtn.MouseButton1Click:Connect(function() SwitchTab(SettingsPanel, TabSettingsBtn) end)
+
+-- STREAMING_CHUNK: Implementing dynamic player scanner and list updater...
+local PlayerCards = {}
+
+local function RefreshPlayerList()
+-- Clear current list items
+for _, child in ipairs(PlayerScroll:GetChildren()) do
+if child:IsA("Frame") then
 child:Destroy()
 end
 end
+PlayerCards = {}
 
-local activePlayers = Players:GetPlayers()
+local filterText = string.lower(SearchBox.Text)
 
--- If playing alone in Studio / test environment, add self for testing
-if #activePlayers <= 1 then
-    local pBtn = Instance.new("TextButton")
-    pBtn.Name = "SelfTest"
-    pBtn.Size = UDim2.new(1, -6, 0, 36)
-    pBtn.BackgroundColor3 = (selectedTargetPlayer == localPlayer) and Color3.fromRGB(220, 38, 38) or Color3.fromRGB(32, 35, 50)
-    pBtn.Font = Enum.Font.SourceSansBold
-    pBtn.Text = " 👤 Test on Self (" .. localPlayer.DisplayName .. ")"
-    pBtn.TextColor3 = Color3.fromRGB(240, 240, 255)
-    pBtn.TextSize = 13
-    pBtn.TextXAlignment = Enum.TextXAlignment.Left
-    pBtn.ZIndex = 13
-    pBtn.Parent = playerScroll
+for _, targetPlayer in ipairs(Players:GetPlayers()) do
+    if targetPlayer ~= LocalPlayer then
+        if filterText == "" or string.find(string.lower(targetPlayer.DisplayName), filterText) or string.find(string.lower(targetPlayer.Name), filterText) then
+            
+            local Card = Instance.new("Frame")
+            Card.Name = targetPlayer.Name
+            Card.Size = UDim2.new(1, -10, 0, 50)
+            Card.BackgroundColor3 = (SelectedPlayer == targetPlayer) and Color3.fromRGB(120, 20, 40) or Color3.fromRGB(28, 28, 38)
+            Card.Parent = PlayerScroll
 
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = pBtn
+            local CardCorner = Instance.new("UICorner")
+            CardCorner.CornerRadius = UDim.new(0, 6)
+            CardCorner.Parent = Card
 
-    pBtn.MouseButton1Click:Connect(function()
-        selectedTargetPlayer = localPlayer
-        targetStatusLabel.Text = "Target: " .. localPlayer.DisplayName .. " (Self)"
-        updatePlayerList()
-    end)
-else
-    for _, player in ipairs(activePlayers) do
-        if player ~= localPlayer then
-            local pBtn = Instance.new("TextButton")
-            pBtn.Name = player.Name
-            pBtn.Size = UDim2.new(1, -6, 0, 36)
-            pBtn.BackgroundColor3 = (selectedTargetPlayer == player) and Color3.fromRGB(220, 38, 38) or Color3.fromRGB(32, 35, 50)
-            pBtn.Font = Enum.Font.SourceSansBold
-            pBtn.Text = " 👤 " .. player.DisplayName
-            pBtn.TextColor3 = Color3.fromRGB(240, 240, 255)
-            pBtn.TextSize = 13
-            pBtn.TextXAlignment = Enum.TextXAlignment.Left
-            pBtn.ZIndex = 13
-            pBtn.Parent = playerScroll
+            -- Avatar Headshot Icon
+            local AvatarImage = Instance.new("ImageLabel")
+            AvatarImage.Size = UDim2.new(0, 40, 0, 40)
+            AvatarImage.Position = UDim2.new(0, 5, 0, 5)
+            AvatarImage.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+            AvatarImage.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+            AvatarImage.Parent = Card
 
-            local btnCorner = Instance.new("UICorner")
-            btnCorner.CornerRadius = UDim.new(0, 6)
-            btnCorner.Parent = pBtn
+            local AvatarCorner = Instance.new("UICorner")
+            AvatarCorner.CornerRadius = UDim.new(1, 0)
+            AvatarCorner.Parent = AvatarImage
 
-            pBtn.MouseButton1Click:Connect(function()
-                selectedTargetPlayer = player
-                targetStatusLabel.Text = "Target: " .. player.DisplayName
-                updatePlayerList()
+            -- Fetch user thumbnail safely
+            task.spawn(function()
+                local content, isLoaded = Players:GetUserThumbnailAsync(
+                    targetPlayer.UserId,
+                    Enum.ThumbnailType.HeadShot,
+                    Enum.ThumbnailSize.Size100x100
+                )
+                if isLoaded then
+                    AvatarImage.Image = content
+                end
             end)
+
+            -- Display Name & Username
+            local NameLabel = Instance.new("TextLabel")
+            NameLabel.Size = UDim2.new(0.6, 0, 0, 22)
+            NameLabel.Position = UDim2.new(0, 52, 0, 5)
+            NameLabel.BackgroundTransparency = 1
+            NameLabel.Text = targetPlayer.DisplayName
+            NameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            NameLabel.Font = Enum.Font.GothamBold
+            NameLabel.TextSize = 14
+            NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+            NameLabel.Parent = Card
+
+            local UserLabel = Instance.new("TextLabel")
+            UserLabel.Size = UDim2.new(0.6, 0, 0, 18)
+            UserLabel.Position = UDim2.new(0, 52, 0, 26)
+            UserLabel.BackgroundTransparency = 1
+            UserLabel.Text = "@" .. targetPlayer.Name
+            UserLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
+            UserLabel.Font = Enum.Font.SourceSans
+            UserLabel.TextSize = 12
+            UserLabel.TextXAlignment = Enum.TextXAlignment.Left
+            UserLabel.Parent = Card
+
+            -- Selection Button Overlay
+            local SelectBtn = Instance.new("TextButton")
+            SelectBtn.Size = UDim2.new(1, 0, 1, 0)
+            SelectBtn.BackgroundTransparency = 1
+            SelectBtn.Text = ""
+            SelectBtn.Parent = Card
+
+            SelectBtn.MouseButton1Click:Connect(function()
+                SelectedPlayer = targetPlayer
+                RefreshPlayerList()
+            end)
+
+            PlayerCards[targetPlayer.UserId] = Card
         end
     end
 end
 
-playerScroll.CanvasSize = UDim2.new(0, 0, 0, playerListLayout.AbsoluteContentSize.Y + 10)
+PlayerScroll.CanvasSize = UDim2.new(0, 0, 0, PlayerListLayout.AbsoluteContentSize.Y + 10)
 
 
 end
 
-Players.PlayerAdded:Connect(updatePlayerList)
+RefreshBtn.MouseButton1Click:Connect(RefreshPlayerList)
+SearchBox:GetPropertyChangedSignal("Text"):Connect(RefreshPlayerList)
+
+Players.PlayerAdded:Connect(RefreshPlayerList)
 Players.PlayerRemoving:Connect(function(player)
-if selectedTargetPlayer == player then
-selectedTargetPlayer = nil
-targetStatusLabel.Text = "Target: None Selected"
+if SelectedPlayer == player then
+SelectedPlayer = nil
 end
-updatePlayerList()
+RefreshPlayerList()
 end)
 
-updatePlayerList()
+-- STREAMING_CHUNK: Implementing camera shake and visual FX generators...
+local function TriggerScreenScare(duration, imageId, soundId)
+task.spawn(function()
+local ScareFrame = Instance.new("Frame")
+ScareFrame.Size = UDim2.new(1, 0, 1, 0)
+ScareFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+ScareFrame.BackgroundTransparency = 0.2
+ScareFrame.ZIndex = 200
+ScareFrame.Parent = ScreenGui
 
--- STREAMING_CHUNK:Implementing character mechanics (Teleport & Spin)...
-local function teleportToTarget(target)
-if not target or not target.Character then return end
-local targetHrp = target.Character:FindFirstChild("HumanoidRootPart")
-local myHrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local ImageOverlay = Instance.new("ImageLabel")
+    ImageOverlay.Size = UDim2.new(1, 0, 1, 0)
+    ImageOverlay.BackgroundTransparency = 1
+    ImageOverlay.Image = imageId or "rbxassetid://6322923052" -- Horror Face
+    ImageOverlay.ZIndex = 201
+    ImageOverlay.Parent = ScareFrame
 
-if targetHrp and myHrp then
-    if target == localPlayer then
-        myHrp.CFrame = myHrp.CFrame * CFrame.new(0, 0, -5)
-    else
-        myHrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, -3.5) * CFrame.Angles(0, math.pi, 0)
+    local Audio = Instance.new("Sound")
+    Audio.SoundId = soundId or "rbxassetid://9069609268" -- High pitch screech
+    Audio.Volume = 3
+    Audio.Parent = SoundService
+    Audio:Play()
+
+    -- Screen Shake Animation Loop
+    local startTime = tick()
+    local cam = workspace.CurrentCamera
+    local origCFrame = cam.CFrame
+
+    while tick() - startTime < duration do
+        local shakeX = math.random(-8, 8) / 10
+        local shakeY = math.random(-8, 8) / 10
+        ScareFrame.Position = UDim2.new(0, shakeX * 10, 0, shakeY * 10)
+        ImageOverlay.ImageColor3 = (math.random(1, 2) == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 0, 0)
+        RunService.RenderStepped:Wait()
     end
-end
 
-
-end
-
-local function toggleSpinCharacter(speed)
-speed = speed or 35
-if isSpinning then
-isSpinning = false
-spinButton.Text = "🔄 Spin Character"
-spinButton.BackgroundColor3 = Color3.fromRGB(35, 40, 58)
-if spinConnection then
-spinConnection:Disconnect()
-spinConnection = nil
-end
-else
-isSpinning = true
-spinButton.Text = "🛑 Stop Spinning"
-spinButton.BackgroundColor3 = Color3.fromRGB(220, 38, 38)
-spinConnection = RunService.RenderStepped:Connect(function()
-local myHrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-if myHrp then
-myHrp.CFrame = myHrp.CFrame * CFrame.Angles(0, math.rad(speed), 0)
-end
-end)
-end
-end
-
--- STREAMING_CHUNK:Implementing jumpscare execution modes...
-local function triggerJumpscareEffect(mode)
-pcall(function()
-local sound = Instance.new("Sound")
-sound.SoundId = "rbxassetid://9069609268"
-sound.Volume = 4
-sound.Parent = SoundService
-sound:Play()
-task.delay(3, function() sound:Destroy() end)
+    ScareFrame:Destroy()
+    Audio:Destroy()
 end)
 
-if mode == "Classic Screamer" then
-    jumpscareOverlay.BackgroundTransparency = 0.1
-    jumpscareImage.ImageTransparency = 0
-    jumpscareImage.Size = UDim2.new(0.4, 0, 0.4, 0)
-    
-    local tweenZoom = TweenService:Create(jumpscareImage, TweenInfo.new(0.25, Enum.EasingStyle.Bounce), { Size = UDim2.new(1.1, 0, 1.1, 0) })
-    tweenZoom:Play()
-    
-    task.wait(1.2)
-    
-    TweenService:Create(jumpscareOverlay, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
-    TweenService:Create(jumpscareImage, TweenInfo.new(0.4), { ImageTransparency = 1 }):Play()
-
-elseif mode == "Spinning TP Ambush" then
-    if selectedTargetPlayer then
-        teleportToTarget(selectedTargetPlayer)
-    end
-    
-    local tempSpin = RunService.RenderStepped:Connect(function()
-        local myHrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if myHrp then
-            myHrp.CFrame = myHrp.CFrame * CFrame.Angles(0, math.rad(50), 0)
-        end
-    end)
-    
-    jumpscareOverlay.BackgroundTransparency = 0.3
-    jumpscareImage.ImageTransparency = 0.2
-    
-    task.wait(1.5)
-    tempSpin:Disconnect()
-    jumpscareOverlay.BackgroundTransparency = 1
-    jumpscareImage.ImageTransparency = 1
-
-elseif mode == "Void Screamer" then
-    for i = 1, 8 do
-        jumpscareOverlay.BackgroundTransparency = (i % 2 == 0) and 0.1 or 0.8
-        jumpscareOverlay.BackgroundColor3 = (i % 2 == 0) and Color3.fromRGB(180, 0, 0) or Color3.fromRGB(0, 0, 0)
-        task.wait(0.08)
-    end
-    jumpscareOverlay.BackgroundTransparency = 1
-
-elseif mode == "Dimension Strobe" then
-    if selectedTargetPlayer then
-        for i = 1, 5 do
-            teleportToTarget(selectedTargetPlayer)
-            local myHrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if myHrp then
-                myHrp.CFrame = myHrp.CFrame * CFrame.new(math.random(-6, 6), 0, math.random(-6, 6))
-            end
-            jumpscareOverlay.BackgroundTransparency = 0.2
-            task.wait(0.12)
-            jumpscareOverlay.BackgroundTransparency = 1
-            task.wait(0.12)
-        end
-    end
-end
-
 
 end
 
--- STREAMING_CHUNK:Connecting user events and completion logic...
-executeButton.MouseButton1Click:Connect(function()
-if not selectedTargetPlayer then
-targetStatusLabel.Text = "⚠️ Select a target first!"
-task.wait(1.2)
-targetStatusLabel.Text = "Target: None Selected"
+-- STREAMING_CHUNK: Creating jumpscare execution engine...
+local function PerformJumpscare()
+if IsJumpscaring then return end
+if not SelectedPlayer or not SelectedPlayer.Character or not SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+ActionExecuteBtn.Text = "⚠️ SELECT A VALID PLAYER FIRST!"
+task.wait(1.5)
+ActionExecuteBtn.Text = "💀 EXECUTE JUMPSCARE ON SELECTED PLAYER 💀"
 return
 end
-triggerJumpscareEffect(activeJumpscareType)
+
+local LocalChar = LocalPlayer.Character
+if not LocalChar or not LocalChar:FindFirstChild("HumanoidRootPart") then return end
+
+local MyHRP = LocalChar.HumanoidRootPart
+local TargetHRP = SelectedPlayer.Character.HumanoidRootPart
+
+IsJumpscaring = true
+ActionExecuteBtn.Text = "⚡ JUMPSCARE IN PROGRESS..."
+ActionExecuteBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+
+local originalPosition = MyHRP.CFrame
+
+if ActiveJumpscare == "Classic Screamer" then
+    MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, 0, -3) * CFrame.Angles(0, math.rad(180), 0)
+    TriggerScreenScare(ScareDuration, "rbxassetid://6322923052", "rbxassetid://9069609268")
+    task.wait(ScareDuration)
+
+elseif ActiveJumpscare == "Orbit Spin Tornado" then
+    TriggerScreenScare(ScareDuration, "rbxassetid://7186088210", "rbxassetid://9114223171")
+    local elapsed = 0
+    while elapsed < ScareDuration and TargetHRP and TargetHRP.Parent do
+        local dt = RunService.RenderStepped:Wait()
+        elapsed = elapsed + dt
+        local angle = elapsed * (SpinSpeed / 5)
+        local offset = Vector3.new(math.cos(angle) * 5, math.sin(angle * 2) * 2, math.sin(angle) * 5)
+        MyHRP.CFrame = CFrame.new(TargetHRP.Position + offset, TargetHRP.Position)
+        MyHRP.Velocity = Vector3.new(0, 0, 0)
+    end
+
+elseif ActiveJumpscare == "Void Abyss Drop" then
+    MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, 80, 0)
+    TriggerScreenScare(ScareDuration, "rbxassetid://6322923052", "rbxassetid://9069609268")
+    
+    local elapsed = 0
+    while elapsed < ScareDuration and TargetHRP and TargetHRP.Parent do
+        local dt = RunService.RenderStepped:Wait()
+        elapsed = elapsed + dt
+        MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, math.max(2, 80 - (elapsed * 40)), -2) * CFrame.Angles(0, math.rad(180), 0)
+    end
+
+elseif ActiveJumpscare == "Strobe Glitch Stalker" then
+    TriggerScreenScare(ScareDuration, "rbxassetid://7186088210", "rbxassetid://9069609268")
+    local angles = {0, 45, 90, 135, 180, 225, 270, 315}
+    local elapsed = 0
+    while elapsed < ScareDuration and TargetHRP and TargetHRP.Parent do
+        local rad = math.rad(angles[math.random(1, #angles)])
+        local offset = Vector3.new(math.cos(rad) * 4, 0, math.sin(rad) * 4)
+        MyHRP.CFrame = CFrame.new(TargetHRP.Position + offset, TargetHRP.Position)
+        task.wait(0.1)
+        elapsed = elapsed + 0.1
+    end
+
+elseif ActiveJumpscare == "Shadow Phantom" then
+    -- Teleport slightly behind target silently
+    MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, 0, 6)
+    task.wait(0.8)
+    -- Sudden dash front jumpscare
+    MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, 0, -2.5) * CFrame.Angles(0, math.rad(180), 0)
+    TriggerScreenScare(ScareDuration - 0.8, "rbxassetid://6322923052", "rbxassetid://9069609268")
+    task.wait(ScareDuration - 0.8)
+
+elseif ActiveJumpscare == "Giant Face Swallow" then
+    MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, 0, -4) * CFrame.Angles(0, math.rad(180), 0)
+    TriggerScreenScare(ScareDuration, "rbxassetid://7186088210", "rbxassetid://9069609268")
+    task.wait(ScareDuration)
+
+elseif ActiveJumpscare == "Demonic Possession" then
+    TriggerScreenScare(ScareDuration, "rbxassetid://6322923052", "rbxassetid://9114223171")
+    local elapsed = 0
+    while elapsed < ScareDuration and TargetHRP and TargetHRP.Parent do
+        local dt = RunService.RenderStepped:Wait()
+        elapsed = elapsed + dt
+        local rot = elapsed * (SpinSpeed / 2)
+        MyHRP.CFrame = TargetHRP.CFrame * CFrame.new(0, 3, -3) * CFrame.Angles(0, math.rad(rot), 0)
+    end
+end
+
+-- Return to original position
+MyHRP.CFrame = originalPosition
+IsJumpscaring = false
+ActionExecuteBtn.Text = "💀 EXECUTE JUMPSCARE ON SELECTED PLAYER 💀"
+ActionExecuteBtn.BackgroundColor3 = Color3.fromRGB(255, 20, 50)
+
+
+end
+
+ActionExecuteBtn.MouseButton1Click:Connect(PerformJumpscare)
+
+-- STREAMING_CHUNK: Setting up event listeners and keybinds...
+CloseBtn.MouseButton1Click:Connect(function()
+MainFrame.Visible = false
+GuiVisible = false
 end)
 
-tpButton.MouseButton1Click:Connect(function()
-if selectedTargetPlayer then
-teleportToTarget(selectedTargetPlayer)
-else
-targetStatusLabel.Text = "⚠️ Select a target first!"
-task.wait(1.2)
-targetStatusLabel.Text = "Target: None Selected"
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+if gameProcessed then return end
+if input.KeyCode == Enum.KeyCode.RightControl or input.KeyCode == Enum.KeyCode.V then
+GuiVisible = not GuiVisible
+MainFrame.Visible = GuiVisible
 end
 end)
 
-spinButton.MouseButton1Click:Connect(function()
-toggleSpinCharacter(40)
-end)
+-- STREAMING_CHUNK: Triggering initial welcome intro sequences...
+local function RunIntroAnimation()
+IntroSound:Play()
 
-closeButton.MouseButton1Click:Connect(function()
-if spinConnection then
-spinConnection:Disconnect()
+-- Title Fade In
+TweenService:Create(IntroTitle, TweenInfo.new(1.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+    TextTransparency = 0,
+    Position = UDim2.new(0.5, -300, 0.35, -40)
+}):Play()
+
+TweenService:Create(IntroSub, TweenInfo.new(1.4, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+    TextTransparency = 0,
+    Position = UDim2.new(0.5, -200, 0.35, 45)
+}):Play()
+
+TweenService:Create(IntroGlow, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+    ImageTransparency = 0.4
+}):Play()
+
+task.wait(2.2)
+
+-- Collapse Intro and open Main UI
+TweenService:Create(IntroTitle, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+    TextTransparency = 1,
+    Size = UDim2.new(0, 0, 0, 0)
+}):Play()
+
+TweenService:Create(IntroSub, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+    TextTransparency = 1
+}):Play()
+
+TweenService:Create(IntroFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+    BackgroundTransparency = 1
+}):Play()
+
+task.wait(0.6)
+IntroFrame:Destroy()
+
+MainFrame.Visible = true
+MainFrame.Size = UDim2.new(0, 0, 0, 0)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+TweenService:Create(MainFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, 620, 0, 420),
+    Position = UDim2.new(0.5, -310, 0.5, -210)
+}):Play()
+
+RefreshPlayerList()
+
+
 end
-screenGui:Destroy()
-end)
 
-print("✅ Nightmare OP GUI successfully displayed on screen!")
+task.spawn(RunIntroAnimation)
