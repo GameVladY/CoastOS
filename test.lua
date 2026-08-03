@@ -1,5 +1,7 @@
+--[[
 ========================================================================
---]]
+WELCOME TO NIGHTMARE OP SCRIPT
+========================================================================
 
 -- STREAMING_CHUNK:Initializing Roblox services and state variables...
 local Players = game:GetService("Players")
